@@ -8,7 +8,11 @@
 
 #include <stdlib.h>    /* ANSI C standard library */
 #include <stdio.h>     /* ANSI C standard input/output library */
+#ifdef VERILATOR
+#include "verilated_vpi.h" /* IEEE 1364 PLI VPI routine library  */
+#else
 #include "vpi_user.h" /* IEEE 1364 PLI VPI routine library  */
+#endif
 
 #define SUCCESS 0
 #define ERR_FILE_OPEN 1
@@ -17,32 +21,31 @@
 #define ERR_SYSTF_USAGE 4
 
 /* Function Prototypes */
-PLI_INT32 afPrTsCompiletf(PLI_BYTE8 *user_data);
-PLI_INT32 afPrTsStartOfSim(struct t_cb_data *cb_data);
-const char *tu2Str(int curTU);
-PLI_INT32 afPrTsCalltf(char *user_data);
-void afPrTsCurNode(vpiHandle modHdl, FILE *afCsvOpFp);
-void afPrTsTraverse(vpiHandle topModHdl, FILE *afCsvOpFp);
-void afPrTsregister();
+PLI_INT32 afPrHierCompiletf(PLI_BYTE8 *user_data);
+PLI_INT32 afPrHierStartOfSim(struct t_cb_data *cb_data);
+PLI_INT32 afPrHierCalltf(char *user_data);
+void afPrHierCurNode(vpiHandle modHdl, FILE *afCsvOpFp);
+void afPrHierTraverse(vpiHandle topModHdl, FILE *afCsvOpFp);
+void afPrHierRegister();
 
 /**********************************************************************
- * afPrTsregister:
- * Registers the $afPrTs system task and start-of-simulation callback.
+ * afPrHierRegister:
+ * Registers the $afPrHier system task and start-of-simulation callback.
  * Sets up VPI and TF function pointers for simulation interaction.
  *********************************************************************/
-void afPrTsregister()
+void afPrHierRegister()
 {
   s_vpi_systf_data tf_data;
   s_cb_data   cb_data_s;
 
   tf_data.type      = vpiSysTask;
-  tf_data.tfname    = "$afPrTs";
-  tf_data.calltf    = afPrTsCalltf;
-  tf_data.compiletf = afPrTsCompiletf;
+  tf_data.tfname    = (PLI_BYTE8*)"$afPrHier";
+  tf_data.calltf    = afPrHierCalltf;
+  tf_data.compiletf = afPrHierCompiletf;
   vpi_register_systf(&tf_data);
 
   cb_data_s.reason    = cbStartOfSimulation;
-  cb_data_s.cb_rtn    = afPrTsStartOfSim;
+  cb_data_s.cb_rtn    = afPrHierStartOfSim;
   cb_data_s.obj       = NULL;
   cb_data_s.time      = NULL;
   cb_data_s.value     = NULL;
@@ -50,16 +53,16 @@ void afPrTsregister()
   vpi_register_cb(&cb_data_s); 
 }
 
-/* Array of startup routines, with afPrTsregister as an entry point */
+/* Array of startup routines, with afPrHierRegister as an entry point */
 void (*vlog_startup_routines[] ) () =
 { 
-  afPrTsregister, 
+  afPrHierRegister, 
   0 /* Last entry must be 0 */
 };
 
 /**********************************************************************
- * afPrTsCompiletf:
- * Verifies that the $afPrTs system task has been called without arguments.
+ * afPrHierCompiletf:
+ * Verifies that the $afPrHier system task has been called without arguments.
  * Prints an error and halts simulation if incorrect usage is detected.
  *
  * Parameters:
@@ -68,7 +71,7 @@ void (*vlog_startup_routines[] ) () =
  * Returns:
  * - SUCCESS on correct usage; otherwise, error codes on invalid usage.
  *********************************************************************/
-PLI_INT32 afPrTsCompiletf(PLI_BYTE8 *user_data)
+PLI_INT32 afPrHierCompiletf(PLI_BYTE8 *user_data)
 {
   vpiHandle systf_handle, arg_itr;
 
@@ -76,7 +79,7 @@ PLI_INT32 afPrTsCompiletf(PLI_BYTE8 *user_data)
   systf_handle = vpi_handle(vpiSysTfCall, NULL);
   if (systf_handle == NULL) 
   {
-    vpi_printf("ERROR: $afPrTs could not obtain a handle to the Task call\n");
+    vpi_printf((PLI_BYTE8*)"ERROR: $afPrHier could not obtain a handle to the Task call\n");
     vpi_control(vpiFinish, 0);
     return ERR_SYSTF_CALL;
   }
@@ -84,7 +87,7 @@ PLI_INT32 afPrTsCompiletf(PLI_BYTE8 *user_data)
   arg_itr = vpi_iterate(vpiArgument, systf_handle);
   if (arg_itr != NULL) 
   {
-    vpi_printf("ERROR: $afPrTs does not require any arguments\n");
+    vpi_printf((PLI_BYTE8*)"ERROR: $afPrHier does not require any arguments\n");
     vpi_control(vpiFinish, 0);
     return ERR_SYSTF_USAGE;
   }
@@ -93,9 +96,9 @@ PLI_INT32 afPrTsCompiletf(PLI_BYTE8 *user_data)
 }
 
 /**********************************************************************
- * afPrTsCalltf:
- * Main function for the $afPrTs task. Opens a CSV file and retrieves
- * time unit and precision information for each module in the design,
+ * afPrHierCalltf:
+ * Main function for the $afPrHier task. Opens a CSV file and retrieves
+ * instance name for each module instance in the design,
  * writing it to the CSV file.
  *
  * Parameters:
@@ -104,59 +107,60 @@ PLI_INT32 afPrTsCompiletf(PLI_BYTE8 *user_data)
  * Returns:
  * - SUCCESS on successful operation; otherwise, error codes on failure.
  *********************************************************************/
-PLI_INT32 afPrTsCalltf(char *user_data)
+PLI_INT32 afPrHierCalltf(char *user_data)
 {
   vpiHandle topModItr, topModHdl;
-  const char *afOpCsvFname = "output_tscale_info.csv";  
+  const char *afOpCsvFname = "output_hier_info.csv";  
   FILE *afCsvOpFp = fopen(afOpCsvFname, "w");
 
   (void)user_data;  // Mark user_data as unused
   /* Open CSV file for writing */
   if (afCsvOpFp == NULL) {
-    vpi_printf("ERROR: Failed to open CSV file: %s for writing\n", afOpCsvFname);
+    vpi_printf((PLI_BYTE8*)"ERROR: Failed to open CSV file: %s for writing\n", afOpCsvFname);
     return ERR_FILE_OPEN;
   }
 
   /* Write CSV header */
-  fprintf(afCsvOpFp, "Module, Time unit, Time Precision\n");
+  fprintf(afCsvOpFp, "// AsFigo Verification utility - an app to print Instance hierarchy from VPI\n");
+  fprintf(afCsvOpFp, "// Module_name, Instance_name\n");
 
   /* Get the iterator for top-level modules */
   topModItr = vpi_iterate(vpiModule, NULL); 
   if (topModItr == NULL) 
   {
-    vpi_printf("ERROR: $afPrTs failed to obtain top module iterator\n");
+    vpi_printf((PLI_BYTE8*)"ERROR: $afPrHier failed to obtain top module iterator\n");
     fclose(afCsvOpFp);
     return ERR_MOD_ITERATION;
   }
 
-  /* Traverse and log each module's time unit and precision */
+  /* Traverse and log each module's info */
   while ((topModHdl = vpi_scan(topModItr)) != NULL)
   {
-    afPrTsTraverse(topModHdl, afCsvOpFp); 
+    afPrHierTraverse(topModHdl, afCsvOpFp); 
   }
 
-  vpi_printf("\n$afPrTs - a tree walker that prints each Module name and its timescale information to a CSV file\n");
-  vpi_printf("\nOutput file successfully created in: %s\n", afOpCsvFname);
+  vpi_printf((PLI_BYTE8*)"\n$afPrHier - a tree walker that prints each Module instance and its timescale information to a CSV file\n");
+  vpi_printf((PLI_BYTE8*)"\nOutput file successfully created in: %s\n", afOpCsvFname);
   /* Close file and free iterator */
   fclose(afCsvOpFp);
   return SUCCESS;
 }
 
 /**********************************************************************
- * afPrTsTraverse:
+ * afPrHierTraverse:
  * Recursively traverses each module in the hierarchy, calling
- * afPrTsCurNode on each to write time unit and precision data to CSV.
+ * afPrHierCurNode on each 
  *
  * Parameters:
  * - topModHdl: Handle to the current module being processed.
  * - afCsvOpFp: Pointer to the output CSV file.
  *********************************************************************/
-void afPrTsTraverse(vpiHandle topModHdl, FILE *afCsvOpFp)
+void afPrHierTraverse(vpiHandle topModHdl, FILE *afCsvOpFp)
 {
   vpiHandle childModItr, childModHdl;
 
   /* Process current module */
-  afPrTsCurNode(topModHdl, afCsvOpFp);
+  afPrHierCurNode(topModHdl, afCsvOpFp);
   
   /* Iterate over child modules */
   childModItr = vpi_iterate(vpiModule, topModHdl);
@@ -164,72 +168,33 @@ void afPrTsTraverse(vpiHandle topModHdl, FILE *afCsvOpFp)
   {
     while ((childModHdl = vpi_scan(childModItr)) != NULL) 
     {
-      afPrTsTraverse(childModHdl, afCsvOpFp);
+      afPrHierTraverse(childModHdl, afCsvOpFp);
     }
   }
 }
 
 /**********************************************************************
- * afPrTsCurNode:
- * Writes the module name, time unit, and precision of the given module
+ * afPrHierCurNode:
+ * Writes the module name, and instance name
  * to the CSV file.
  *
  * Parameters:
  * - modHdl: Handle to the module to be logged.
  * - afCsvOpFp: Pointer to the output CSV file.
  *********************************************************************/
-void afPrTsCurNode(vpiHandle modHdl, FILE *afCsvOpFp)
+void afPrHierCurNode(vpiHandle modHdl, FILE *afCsvOpFp)
 {
-  int modTUnit, modTPrec;
-
-  /* Retrieve time unit and precision for the module */
-  modTUnit = vpi_get(vpiTimeUnit, modHdl);
-  modTPrec = vpi_get(vpiTimePrecision, modHdl);
+  const char *modName  = vpi_get_str(vpiDefName, modHdl);
+  const char *fullName = vpi_get_str(vpiFullName, modHdl);
 
   /* Write module data to CSV */
-  fprintf(afCsvOpFp, "%s, %s, %s\n",
-      vpi_get_str(vpiDefName, modHdl),
-      tu2Str(modTUnit), tu2Str(modTPrec));
+  fprintf(afCsvOpFp, "%s,%s\n",
+      modName, fullName);
 }
 
-/**********************************************************************
- * tu2Str:
- * Converts an integer time unit code to a readable string.
- *
- * Parameters:
- * - curTU: Integer code representing the time unit.
- *
- * Returns:
- * - A string representing the human-readable time unit.
- *********************************************************************/
-const char *tu2Str(int curTU)
-{
-  switch (curTU) 
-  {
-    case -15: return " fs";
-    case -14: return " 10 fs";
-    case -13: return " 100 fs";
-    case -12: return " ps";
-    case -11: return " 10 ps";
-    case -10: return " 100 ps";
-    case  -9: return " ns";
-    case  -8: return " 10 ns";
-    case  -7: return " 100 ns";
-    case  -6: return " us";
-    case  -5: return " 10 us";
-    case  -4: return " 100 us";
-    case  -3: return " ms";
-    case  -2: return " 10 ms";
-    case  -1: return " 100 ms";
-    case   0: return " s";
-    case   1: return " 10 s";
-    case   2: return " 100 s";
-    default:  return "Unknown Time Unit";
-  }
-}
 
 /**********************************************************************
- * afPrTsStartOfSim:
+ * afPrHierStartOfSim:
  * Callback function triggered at the start of the simulation.
  * Used for printing a header or initialization message.
  *
@@ -239,10 +204,10 @@ const char *tu2Str(int curTU)
  * Returns:
  * - SUCCESS always.
  *********************************************************************/
-PLI_INT32 afPrTsStartOfSim(struct t_cb_data *cb_data)
+PLI_INT32 afPrHierStartOfSim(struct t_cb_data *cb_data)
 {
   (void)cb_data;  // Mark cb_data as unused
-  vpi_printf("\nAsFigo Verification Utility: $afPrTs VPI app. ");
-  vpi_printf("It is a tree walker that prints each Module name and its timescale information to a CSV file\n");
+  vpi_printf((PLI_BYTE8*)"\nAsFigo Verification Utility: $afPrHier VPI app. ");
+  vpi_printf((PLI_BYTE8*)"It is a tree walker that prints each Module name and its instance information to a CSV file\n");
   return SUCCESS;
 }

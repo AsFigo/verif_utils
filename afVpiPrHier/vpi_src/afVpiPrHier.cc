@@ -13,6 +13,7 @@
 #else
 #include "vpi_user.h" /* IEEE 1364 PLI VPI routine library  */
 #endif
+#include <string.h>
 
 #define SUCCESS 0
 #define ERR_FILE_OPEN 1
@@ -184,8 +185,8 @@ void afPrHierTraverse(vpiHandle topModHdl, FILE *afCsvOpFp)
  *********************************************************************/
 void afPrHierCurNode(vpiHandle modHdl, FILE *afCsvOpFp)
 {
-  const char *modName  = vpi_get_str(vpiDefName, modHdl);
-  const char *fullName = vpi_get_str(vpiFullName, modHdl);
+  const char *modName  = strdup(vpi_get_str(vpiDefName, modHdl));
+  const char *fullName = strdup(vpi_get_str(vpiFullName, modHdl));
 
   /* Write module data to CSV */
   fprintf(afCsvOpFp, "%s,%s\n",

@@ -3,7 +3,7 @@
 ## Table of Contents
 - [Overview](#overview)
 - [Key Features](#key-features)
-- [File Structure](#file-structure)
+- [Code Structure](#code-structure)
 - [Building and Installation](#building-and-installation)
 - [Usage](#usage)
 - [Output Format](#output-format)
@@ -28,7 +28,8 @@ helping developers verify consistency and catch potential timing discrepancies i
 - **VPI-Based Application**: Integrates with simulation environments that support IEEE 1364 PLI/VPI, allowing it to operate on a wide range of simulators.
 - **Start of Simulation Callback**: Automatically initiates at the start of simulation, providing a brief utility header.
 
-## File Structure
+## Code Structure
+vpi_src/afVpiPrTs.cc 
 
 - **`afPrTsCompiletf`**: Verifies that `$afPrTs` is called without arguments.
 - **`afPrTsCalltf`**: Main function that iterates through top-level modules, writes timescale information to the CSV, and handles errors.
@@ -39,7 +40,7 @@ helping developers verify consistency and catch potential timing discrepancies i
 
 ## Building and Installation
 
-1. **Prerequisites**: Ensure you have a Verilog simulator that supports VPI (e.g., Icaurs Verilog, QuestaSim, Xcelium, VCS, etc.).
+1. **Prerequisites**: Ensure you have a Verilog simulator that supports VPI (e.g., Icarus Verilog, QuestaSim, Xcelium, VCS, etc.).
 2. **Compile the VPI Library**: Build the shared library (e.g., `.so` for Linux, `.dll` for Windows) for your simulator:
     ```sh
     gcc -shared -fPIC  -I<simulator_include_path> ../vpi_src/afVpiPrTs.cc -o afPrTsVpi.so
@@ -50,7 +51,7 @@ helping developers verify consistency and catch potential timing discrepancies i
     ```sh
     vsim -pli afPrTsVpi.so <your_verilog_testbench>
     ```
-3. **Fully working example**: A simple example is provided with Makefile to run this app with opensoruce Icarus Verilog simulator. To run this example:
+3. **Fully working example**: A simple example is provided with Makefile to run this app with opensource Icarus Verilog simulator. To run this example:
     ```sh
     cd exec_dir
     make

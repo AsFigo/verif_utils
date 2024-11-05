@@ -3,7 +3,7 @@
 ## Table of Contents
 - [Overview](#overview)
 - [Key Features](#key-features)
-- [File Structure](#file-structure)
+- [Code Structure](#code-structure)
 - [Building and Installation](#building-and-installation)
 - [Usage](#usage)
 - [Output Format](#output-format)
@@ -25,7 +25,8 @@ log instance hierarchy information of modules in a Verilog simulation.
 - **VPI-Based Application**: Integrates with simulation environments that support IEEE 1364 PLI/VPI, allowing it to operate on a wide range of simulators.
 - **Start of Simulation Callback**: Automatically initiates at the start of simulation, providing a brief utility header.
 
-## File Structure
+## Code Structure
+vpi_src/afVpiPrHier.cc
 
 - **`afPrHierCompiletf`**: Verifies that `$afPrHier` is called without arguments.
 - **`afPrHierCalltf`**: Main function that iterates through top-level modules, writes information to the CSV, and handles errors.
@@ -35,7 +36,7 @@ log instance hierarchy information of modules in a Verilog simulation.
 
 ## Building and Installation
 
-1. **Prerequisites**: Ensure you have a Verilog simulator that supports VPI (e.g., Icaurs Verilog, QuestaSim, Xcelium, VCS, etc.).
+1. **Prerequisites**: Ensure you have a Verilog simulator that supports VPI (e.g., Icarus Verilog, QuestaSim, Xcelium, VCS, etc.).
 2. **Compile the VPI Library**: Build the shared library (e.g., `.so` for Linux, `.dll` for Windows) for your simulator:
     ```sh
     gcc -shared -fPIC  -I<simulator_include_path> ../vpi_src/afVpiPrHier.cc -o afPrHierVpi.so
@@ -46,7 +47,7 @@ log instance hierarchy information of modules in a Verilog simulation.
     ```sh
     vsim -pli afPrHierVpi.so <your_verilog_testbench>
     ```
-3. **Fully working example**: A simple example is provided with Makefile to run this app with opensoruce Icarus Verilog simulator. To run this example:
+3. **Fully working example**: A simple example is provided with Makefile to run this app with opensource Icarus Verilog simulator. To run this example:
     ```sh
     cd exec_dir
     make
